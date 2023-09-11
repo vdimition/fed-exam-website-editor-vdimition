@@ -13,7 +13,7 @@ import { Stage } from "../stage";
 type contentType = "image" | "text"
 type textAlign = 'left' | 'center' | 'right'
 
-interface Column {
+interface IColumn {
   id: string,
   contentType: contentType
   text: string,
@@ -22,7 +22,7 @@ interface Column {
   imageAlt: string,
 }
 
-export const defaultColumn: Column = {
+export const defaultColumn: IColumn = {
   id: '',
   contentType: "text",
   text: '',
@@ -33,23 +33,23 @@ export const defaultColumn: Column = {
 
 interface Selected {
   id: string,
-  column: Column
+  column: IColumn
 }
 
-interface Row {
+interface IRow {
   id: string,
-  columns: Column[]
+  columns: IColumn[]
 }
 
 interface State {
-  rows: Row[];
+  rows: IRow[];
 }
 
 export const Editor: FC = () => {
   const [selected, setSelected] = useState<Selected>({ id: '', column: defaultColumn });
   const [state, setState] = useState<State>({ rows: [] });
 
-  const handleSelect = (selected: { id: string, column?: Column }) => () => {
+  const handleSelect = (selected: { id: string, column?: IColumn }) => () => {
     setSelected({ ...selected, column: selected.column || defaultColumn });
   };
 
@@ -60,10 +60,10 @@ export const Editor: FC = () => {
   }
 
   const handleColumnAdd = () => {
-    const column: Column = { ...defaultColumn, id: uuidv4() }
+    const column: IColumn = { ...defaultColumn, id: uuidv4() }
 
     setState({
-      ...state, rows: state.rows.map((row): Row => {
+      ...state, rows: state.rows.map((row): IRow => {
         if (row.id === selected.id) {
           return { ...row, columns: [...row.columns, column] };
         }
@@ -74,7 +74,7 @@ export const Editor: FC = () => {
     setSelected({...selected, column})
   };
 
-  const handleColumnChange = (newColumn: Column) => {
+  const handleColumnChange = (newColumn: IColumn) => {
     const updatedRows = state.rows.map(row => {
       if (row.id === selected.id) {
         return {
