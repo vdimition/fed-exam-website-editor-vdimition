@@ -1,111 +1,57 @@
 import { FC, useState } from "react";
 
-import { v4 as uuidv4 } from 'uuid';
-
 import { Column } from "../column";
 import { Icons } from "../icons";
 import { ImagePlaceholder } from "../image-placeholder";
 import { Markdown } from "../markdown";
 import { Row } from "../row";
 import { Stage } from "../stage";
-
-
-type contentType = "image" | "text"
-type textAlign = 'left' | 'center' | 'right'
-
-interface IColumn {
-  id: string,
-  contentType: contentType
-  text: string,
-  textAlign: textAlign
-  image: string,
-  imageAlt: string,
-}
-
-export const defaultColumn: IColumn = {
-  id: '',
-  contentType: "text",
-  text: '',
-  textAlign: "left",
-  image: '',
-  imageAlt: '',
-}
-
-interface Selected {
-  id: string,
-  column: IColumn
-}
-
-interface IRow {
-  id: string,
-  columns: IColumn[]
-}
-
-interface State {
-  rows: IRow[];
-}
+import {
+  createNewColumn,
+  createNewRow,
+  updateRowsWithAddedColumn,
+  updateRowsWithAddedRow,
+  updateRowsWithUpdatedColumn,
+} from "../../utility";
+import { defaultColumn, IColumn, IRow, SelectedElement } from "../../types";
 
 export const Editor: FC = () => {
-  const [selected, setSelected] = useState<Selected>({ id: '', column: defaultColumn });
-  const [state, setState] = useState<State>({ rows: [] });
+  const [selected, setSelected] = useState<SelectedElement>({ id: "", column: defaultColumn });
+  const [rows, setRows] = useState<IRow[]>([]);
 
-  const handleSelect = (selected: { id: string, column?: IColumn }) => () => {
+  const handleSelect = (selected: { id: string; column?: IColumn }) => () => {
     setSelected({ ...selected, column: selected.column || defaultColumn });
   };
 
   const handleRowAdd = () => {
-    const newRowId = uuidv4();
-    setState({ ...state, rows: [...state.rows, { id: newRowId, columns: [] }] });
-    setSelected({ id: newRowId, column: defaultColumn })
-  }
+    const newRow: IRow = createNewRow();
+    const newRows: IRow[] = updateRowsWithAddedRow(rows, newRow, selected.id);
+
+    setRows(newRows);
+    setSelected({ id: newRow.id, column: defaultColumn });
+  };
 
   const handleColumnAdd = () => {
-    const column: IColumn = { ...defaultColumn, id: uuidv4() }
+    const newColumn: IColumn = createNewColumn();
+    const newRows: IRow[] = updateRowsWithAddedColumn(rows, newColumn, selected.id, selected.column.id);
 
-    setState({
-      ...state, rows: state.rows.map((row): IRow => {
-        if (row.id === selected.id) {
-          return { ...row, columns: [...row.columns, column] };
-        }
-
-        return row;
-      })
-    });
-    setSelected({...selected, column})
+    setRows(newRows);
+    setSelected({ ...selected, column: newColumn });
   };
 
   const handleColumnChange = (newColumn: IColumn) => {
-    const updatedRows = state.rows.map(row => {
-      if (row.id === selected.id) {
-        return {
-          ...row,
-          columns: row.columns.map(column => {
-            if (column.id === selected.column?.id) {
-              return newColumn;
-            }
+    const updatedRows: IRow[] = updateRowsWithUpdatedColumn(rows, newColumn, selected.id);
 
-            return column;
-          })
-        };
-      }
-
-      return row;
-    });
-
-    setState({ ...state, rows: updatedRows });
-    setSelected({ ...selected, column: newColumn })
-  }
+    setRows(updatedRows);
+    setSelected({ ...selected, column: newColumn });
+  };
 
   return (
     <div className="editor">
       <Stage>
-        {state.rows.map(({ id, columns }) => (
-          <Row
-            key={id}
-            onSelect={handleSelect({ id: id })}
-            selected={!selected.column.id && selected.id === id}
-          >
-            {columns.map((column) => (
+        {rows.map(({ id, columns }: IRow) => (
+          <Row key={id} onSelect={handleSelect({ id: id })} selected={!selected.column.id && selected.id === id}>
+            {columns.map((column: IColumn) => (
               <Column
                 key={column.id}
                 onSelect={handleSelect({ id: id, column })}
@@ -114,16 +60,10 @@ export const Editor: FC = () => {
                 {column.contentType === "text" && (
                   <Markdown className={`text-align-${column.textAlign}`}>{column.text}</Markdown>
                 )}
-                {column.contentType === "image" && (
-                  column.image ? (
-                    <img src={column.image} alt={column.imageAlt} />
-                  ) : (
-                    <ImagePlaceholder />
-                  )
-                )}
+                {column.contentType === "image" &&
+                  (column.image ? <img src={column.image} alt={column.imageAlt} /> : <ImagePlaceholder />)}
               </Column>
             ))}
-
           </Row>
         ))}
       </Stage>
@@ -132,7 +72,9 @@ export const Editor: FC = () => {
         <div className="section">
           <div className="section-header">Page</div>
           <div className="actions">
-            <button onClick={handleRowAdd} className="action">Add row</button>
+            <button onClick={handleRowAdd} className="action">
+              Add row
+            </button>
           </div>
         </div>
 
@@ -141,7 +83,9 @@ export const Editor: FC = () => {
             <div className="section">
               <div className="section-header">Row</div>
               <div className="actions">
-                <button onClick={handleColumnAdd} className="action">Add column</button>
+                <button onClick={handleColumnAdd} className="action">
+                  Add column
+                </button>
               </div>
             </div>
 
@@ -153,14 +97,14 @@ export const Editor: FC = () => {
                     <label>Contents</label>
                     <div className="button-group">
                       <button
-                        onClick={() => handleColumnChange({...selected.column, contentType: "text"})}
-                        className={selected.column.contentType === 'text' ? 'selected' : ''}
+                        onClick={() => handleColumnChange({ ...selected.column, contentType: "text" })}
+                        className={selected.column.contentType === "text" ? "selected" : ""}
                       >
                         <Icons.Text />
                       </button>
                       <button
-                        onClick={() => handleColumnChange({...selected.column, contentType: "image"})}
-                        className={selected.column.contentType === 'image' ? 'selected' : ''}
+                        onClick={() => handleColumnChange({ ...selected.column, contentType: "image" })}
+                        className={selected.column.contentType === "image" ? "selected" : ""}
                       >
                         <Icons.Image />
                       </button>
@@ -174,22 +118,32 @@ export const Editor: FC = () => {
                     <div className="button-group-field">
                       <label>Alignment</label>
                       <div className="button-group">
-                        <button onClick={() => handleColumnChange({...selected.column, textAlign: 'left' })} className={selected.column.textAlign === 'left' ? 'selected' : ''}>
+                        <button
+                          onClick={() => handleColumnChange({ ...selected.column, textAlign: "left" })}
+                          className={selected.column.textAlign === "left" ? "selected" : ""}
+                        >
                           <Icons.TextAlignLeft />
                         </button>
-                        <button onClick={() => handleColumnChange({...selected.column, textAlign: 'center' })} className={selected.column.textAlign === 'center' ? 'selected' : ''}>
+                        <button
+                          onClick={() => handleColumnChange({ ...selected.column, textAlign: "center" })}
+                          className={selected.column.textAlign === "center" ? "selected" : ""}
+                        >
                           <Icons.TextAlignCenter />
                         </button>
-                        <button onClick={() => handleColumnChange({...selected.column, textAlign: 'right' })} className={selected.column.textAlign === 'right' ? 'selected' : ''}>
+                        <button
+                          onClick={() => handleColumnChange({ ...selected.column, textAlign: "right" })}
+                          className={selected.column.textAlign === "right" ? "selected" : ""}
+                        >
                           <Icons.TextAlignRight />
                         </button>
                       </div>
                     </div>
                     <div className="textarea-field">
                       <textarea
-                        rows={8} placeholder="Enter text"
+                        rows={8}
+                        placeholder="Enter text"
                         value={selected.column.text}
-                        onChange={(e) => handleColumnChange({...selected.column, text: e.target.value})}
+                        onChange={(e) => handleColumnChange({ ...selected.column, text: e.target.value })}
                       />
                     </div>
                   </div>
@@ -201,15 +155,19 @@ export const Editor: FC = () => {
                     <div className="text-field">
                       <label htmlFor="image-url">URL</label>
                       <input
-                        id="image-url" type="text" value={selected.column.image}
-                        onChange={(e) => handleColumnChange({...selected.column, image: e.target.value})}
+                        id="image-url"
+                        type="text"
+                        value={selected.column.image}
+                        onChange={(e) => handleColumnChange({ ...selected.column, image: e.target.value })}
                       />
                     </div>
                     <div className="text-field">
                       <label htmlFor="image-url">Alt</label>
                       <input
-                        id="image-alt" type="text" value={selected.column.imageAlt}
-                        onChange={(e) => handleColumnChange({...selected.column, imageAlt: e.target.value})}
+                        id="image-alt"
+                        type="text"
+                        value={selected.column.imageAlt}
+                        onChange={(e) => handleColumnChange({ ...selected.column, imageAlt: e.target.value })}
                       />
                     </div>
                   </div>
